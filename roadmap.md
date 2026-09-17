@@ -2,60 +2,38 @@
 
 This project will be developed incrementally, starting with a minimal proof of concept and gradually evolving into a complete Windows application. Each milestone introduces new features while keeping the project functional and easy to test.
 
----
 
-## Phase 1 — Time Monitoring Prototype
 
-**Goal:** Verify that the application can detect a specific time.
+Etapa 1 — Paleta de Cores e Estilização Base (ttk.Style)
 
-### Features
+    Definir as variáveis globais de cores com base na arte (Creme #FAF6F0, Marrom/Terracota #8B5A2B, Destaque Verde #EAF4EC e Texto #2C2C2C).
 
-* Monitor the system clock.
-* Check the current time periodically.
-* Trigger an action when a predefined time is reached.
+    Sobrescrever o tema padrão do Tkinter (ttk.Style.theme_use("clam")) para remover as bordas cinzas tridimensionais da Treeview e ajustar a altura das linhas para 35px.
 
-### Deliverable
+Etapa 2 — Estrutura de Layout e Sidebar (Barra Lateral)
 
-A console application that prints a reminder message when the scheduled time is detected.
+    Dividir a janela principal (820x520) em dois painéis fixos: Sidebar (à esquerda) e Main Panel (à direita).
 
----
+    Montar a barra lateral com o título Eevee Reminder, os botões de navegação estilizados (Home, Settings e About) e o rodapé com a frase motivacional.
 
-## Phase 2 — Sound Notifications
+    Inserir o carregamento da imagem da Eevee na parte inferior da barra lateral usando Pillow (ImageTk.PhotoImage).
 
-**Goal:** Turn the prototype into a functional reminder.
+Etapa 3 — Cabeçalho Dinâmico e Formulário Inline
 
-### Features
+    Adicionar a saudação no topo do painel principal que muda dinamicamente de acordo com o relógio do sistema (Good morning, Good afternoon, Good evening).
 
-* Play an alert sound when a reminder is triggered.
-* Support Windows sound playback.
+    Mover o formulário de cadastro (campos de remédio, horário e botão de salvar) para a parte superior da lista em formato compacto/inline.
 
-### Deliverable
+Etapa 4 — Tabela Integrada e Card "Next Medication"
 
-A console application that displays a reminder and plays a notification sound.
+    Ajustar a Treeview para ocupar o centro da tela sem barras de rolagem desnecessárias, exibindo apenas as colunas Medicamento e Horário.
 
----
+    Criar o card inferior com fundo verde claro (#EAF4EC) para o Next Medication.
 
-## Phase 3 — Basic Graphical Interface
+    Conectar a lógica que calcula automaticamente qual é o próximo remédio do dia e exibe a contagem regressiva ("em X horas e Y min"), atualizando a cada alteração da lista.
 
-**Goal:** Replace console messages with a user-friendly interface.
+Etapa 5 — Redesign da Janela Pop-up de Alarme
 
-### Features
+    Reformular a janela do alarme para utilizar o mesmo fundo creme/branco e bordas limpas.
 
-* Create a simple window using Tkinter.
-* Display reminder notifications.
-* Add a confirmation button.
-
-### Deliverable
-
-A graphical pop-up window that appears when a reminder is triggered.
-
----
-
-## Phase 4 — Configurable Reminder Times
-
-**Goal:** Allow reminder schedules to be modified without editing source code.
-
-### Features
-
-* Store reminder times in a configuration file.
-* Load settings automatically on s
+    Incluir a ilustração da Eevee ao lado da mensagem do remédio e aplicar os botões estilizados Tomei ✓ (Marrom) e Adiar 5m ⏱ (Bege).

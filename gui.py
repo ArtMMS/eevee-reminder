@@ -3,7 +3,7 @@ gui.py
 Interface grafica (Tkinter) — Fase 8.
 - Janela principal: gerenciar (adicionar, editar, remover) horarios + botao de configuracoes.
 - Janela de configuracoes: liga/desliga o inicio automatico com o Windows.
-- Pop-up: exibido quando um lembrete dispara.
+- Pop-up: exibido quando um lembrete dispara, contendo as opcoes de confirmar e adiar.
 """
 
 import tkinter as tk
@@ -65,7 +65,7 @@ def criar_janela_principal(
         tabela.insert("", "end", values=(lembrete["nome"], lembrete["horario"]))
 
     tk.Label(
-        root, text="Dica: de dois cliques num lembrete para editar",
+        root, text="Dica: dê dois cliques para editar ou pressione DEL para remover",
         font=("Segoe UI", 8), fg="gray",
     ).pack()
 
@@ -146,6 +146,9 @@ def criar_janela_principal(
         tabela.delete(selecionado[0])
         limpar_formulario()
 
+    # Atalho para remover ao pressionar a tecla Delete (DEL) na tabela
+    tabela.bind("<Delete>", lambda _evento: clicar_remover())
+
     frame_botoes = tk.Frame(root)
     frame_botoes.pack(pady=(5, 10))
     tk.Button(frame_botoes, text="Remover selecionado", command=clicar_remover).grid(row=0, column=0, padx=5)
@@ -195,24 +198,57 @@ def abrir_janela_configuracoes(
     tk.Button(janela, text="Fechar", command=janela.destroy).pack(pady=(20, 0))
 
 
-def mostrar_popup(root: tk.Tk, mensagem: str, ao_confirmar: Callable[[], None]) -> None:
+def mostrar_popup(
+    root: tk.Tk, 
+    mensagem: str, 
+    ao_confirmar: Callable[[], None],
+    ao_adiar: Optional[Callable[[], None]] = None
+) -> None:
+    """
+    Exibe um alerta contendo as opções de confirmar o remédio tomado 
+    ou adiar o lembrete por alguns minutos (Snooze).
+    """
     popup = tk.Toplevel(root)
     popup.title("Lembrete de Medicamento")
-    popup.geometry("320x160")
+    popup.geometry("340x180")
     popup.resizable(False, False)
     popup.attributes("-topmost", True)
-    popup.protocol("WM_DELETE_WINDOW", lambda: None)
+    
+    def acao_fechar_x() -> None:
+        ao_confirmar()
+        popup.destroy()
 
-    tk.Label(popup, text="Hora do remedio!", font=("Segoe UI", 14, "bold")).pack(pady=(20, 10))
-    tk.Label(popup, text=mensagem, font=("Segoe UI", 11)).pack(pady=(0, 20))
+    popup.protocol("WM_DELETE_WINDOW", acao_fechar_x)
+
+    tk.Label(popup, text="Hora do remédio!", font=("Segoe UI", 14, "bold")).pack(pady=(15, 5))
+    tk.Label(popup, text=mensagem, font=("Segoe UI", 11)).pack(pady=(0, 15))
+
+    frame_acoes = tk.Frame(popup)
+    frame_acoes.pack(pady=5)
 
     def confirmar() -> None:
         ao_confirmar()
         popup.destroy()
 
+    def adiar() -> None:
+        ao_confirmar()  # Para o som do alarme
+        if ao_adiar:
+            ao_adiar()  # Reagenda o lembrete para +5 minutos
+        popup.destroy()
+
     tk.Button(
-        popup,
-        text="Tomei o remedio ✓",
+        frame_acoes,
+        text="Tomei ✓",
         font=("Segoe UI", 10, "bold"),
         command=confirmar,
-    ).pack()
+        width=12,
+    ).grid(row=0, column=0, padx=5)
+
+    if ao_adiar:
+        tk.Button(
+            frame_acoes,
+            text="Adiar 5 min ⏱",
+            font=("Segoe UI", 10),
+            command=adiar,
+            width=12,
+        ).grid(row=0, column=1, padx=5)
