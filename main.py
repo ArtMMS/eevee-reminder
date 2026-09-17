@@ -1,27 +1,29 @@
 """
 main.py
-Ponto de entrada da aplicacao — Fase 4: Horarios Configuraveis + Interface.
+Ponto de entrada da aplicacao — Fase 9: Empacotamento em Executavel.
 
-Deliverable da Fase 4: um sistema de lembretes controlado por um arquivo
-de configuracao externo (config/reminders.json), com interface grafica
-para adicionar/remover horarios sem editar o codigo.
+Deliverable: app completo, pronto para ser gerado como um unico .exe
+com o PyInstaller, mantendo os dados de configuracao ao lado do executavel.
 """
 
+import os
 import queue
 import threading
-from pathlib import Path
 
 import winsound
+from PIL import Image, ImageTk
 
+import startup
 from config import carregar_lembretes, salvar_lembretes
 from gui import criar_janela_principal, mostrar_popup
+from resources import pasta_recursos
 from scheduler import monitorar
+from tray import criar_icone_bandeja, iniciar_icone_em_thread
 
-PASTA_PROJETO = Path(__file__).resolve().parent
-CAMINHO_SOM = PASTA_PROJETO / "assets" / "sounds" / "alert.wav"
+CAMINHO_SOM = pasta_recursos() / "assets" / "sounds" / "alert.wav"
+CAMINHO_ICONE = pasta_recursos() / "assets" / "icon.png"
 INTERVALO_VERIFICACAO = 5
 
-# lista compartilhada entre a interface (thread principal) e o monitor (thread de fundo)
 lembretes = carregar_lembretes()
 fila_lembretes: "queue.Queue[dict]" = queue.Queue()
 
@@ -33,6 +35,11 @@ def obter_lembretes_atuais() -> list[dict]:
 
 def adicionar_lembrete(nome: str, horario: str) -> None:
     lembretes.append({"nome": nome, "horario": horario})
+    salvar_lembretes(lembretes)
+
+
+def editar_lembrete(indice: int, nome: str, horario: str) -> None:
+    lembretes[indice] = {"nome": nome, "horario": horario}
     salvar_lembretes(lembretes)
 
 
@@ -78,8 +85,38 @@ def checar_fila(root) -> None:
     root.after(500, checar_fila, root)
 
 
+def minimizar_para_bandeja(root) -> None:
+    """Chamado ao clicar no X da janela principal: esconde em vez de fechar."""
+    root.withdraw()
+
+
+def restaurar_janela(root) -> None:
+    """Chamado pelo menu 'Abrir' da bandeja (ou duplo clique no icone)."""
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+
+
+def encerrar_aplicativo(icone) -> None:
+    """Chamado pelo menu 'Sair' da bandeja: encerra tudo de vez."""
+    icone.stop()
+    winsound.PlaySound(None, winsound.SND_PURGE)
+    os._exit(0)
+
+
+def alternar_iniciar_com_windows(ativo: bool) -> None:
+    """Chamado ao marcar/desmarcar o checkbox na janela de configuracoes."""
+    try:
+        if ativo:
+            startup.habilitar()
+        else:
+            startup.desabilitar()
+    except OSError as erro:
+        print(f"[erro] nao foi possivel alterar a inicializacao com o Windows: {erro}")
+
+
 if __name__ == "__main__":
-    print("=== Eevee Reminder — Fase 4 ===\n")
+    print("=== Eevee Reminder — Fase 9 ===\n")
 
     thread_monitor = threading.Thread(
         target=monitorar,
@@ -95,7 +132,25 @@ if __name__ == "__main__":
     root, _tabela = criar_janela_principal(
         lembretes_iniciais=lembretes,
         ao_adicionar=adicionar_lembrete,
+        ao_editar=editar_lembrete,
         ao_remover=remover_lembrete,
+        obter_iniciar_com_windows=startup.esta_habilitado,
+        ao_alternar_iniciar_com_windows=alternar_iniciar_com_windows,
     )
+
+    if CAMINHO_ICONE.exists():
+        root.icone_janela = ImageTk.PhotoImage(Image.open(CAMINHO_ICONE))
+        root.iconphoto(True, root.icone_janela)
+    else:
+        print(f"[aviso] icone nao encontrado em: {CAMINHO_ICONE}")
+
+    root.protocol("WM_DELETE_WINDOW", lambda: minimizar_para_bandeja(root))
+
+    icone_bandeja = criar_icone_bandeja(
+        ao_abrir=lambda: root.after(0, restaurar_janela, root),
+        ao_sair=lambda: encerrar_aplicativo(icone_bandeja),
+    )
+    iniciar_icone_em_thread(icone_bandeja)
+
     root.after(500, checar_fila, root)
     root.mainloop()

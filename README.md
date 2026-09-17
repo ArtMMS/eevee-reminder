@@ -39,4 +39,6 @@ This is a personal project intended for learning and personal use.
 * **json** – Configuration storage.
 * **winsound** – Sound playback on Windows.
 * **threading** – Background task execution.
+* **pystray** – System tray integration, allowing the application to run in the background and provide quick access through a tray icon.
+* **pillow** - Image processing and manipulation library used for loading, displaying, and managing application assets and tray icons.
 * **pyinstaller** – Generation of a standalone `.exe` file.

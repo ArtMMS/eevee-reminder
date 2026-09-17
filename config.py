@@ -1,14 +1,16 @@
 """
 config.py
 Leitura e escrita dos horarios de lembrete em um arquivo JSON externo.
-Fase 4: permite editar os horarios sem mexer no codigo fonte.
+Fase 9: o arquivo de configuracao fica sempre ao lado do executavel (ou do
+script), independente de estar rodando como .py ou empacotado como .exe.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import TypedDict
+
+from resources import pasta_dados
 
 
 class Lembrete(TypedDict):
@@ -16,8 +18,7 @@ class Lembrete(TypedDict):
     horario: str  # formato "HH:MM"
 
 
-PASTA_PROJETO = Path(__file__).resolve().parent
-PASTA_CONFIG = PASTA_PROJETO / "config"
+PASTA_CONFIG = pasta_dados() / "config"
 CAMINHO_CONFIG = PASTA_CONFIG / "reminders.json"
 
 LEMBRETES_PADRAO: list[Lembrete] = [
