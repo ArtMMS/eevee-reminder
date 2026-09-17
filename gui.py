@@ -1,8 +1,14 @@
 """
 gui.py
-Modern GUI (Tkinter / Custom Cards) with Pastel theme, custom window layout, and Eevee mascot.
-Integrated PNG Assets: eevee1, eevee2, clock, event, home, setting, sun, half-moon, pill.
-Includes keyboard selection, DEL key item removal functionality, and enlarged Eevee mascot.
+Modern GUI (Tkinter / Custom Cards) with Pastel theme and Eevee mascot.
+Fase 10:
+- Janela sem moldura nativa (overrideredirect) com barra de titulo propria
+  (so minimizar e fechar), arrastavel pelo topo.
+- ESC minimiza para a bandeja (mesmo comportamento do botao de fechar).
+- Item de navegacao ativo com destaque em "pilula" arredondada.
+- Sombra suave nos cards (efeito de camada dupla).
+- Icone de 3 pontos visivel por linha (alem do menu de botao direito).
+- Toggle liga/desliga por lembrete (campo "ativo" no dado do lembrete).
 """
 
 import ctypes
@@ -24,9 +30,12 @@ BG_CARD = "#FFFFFF"          # White Card Background
 BG_CARD_SELECTED = "#F5EBE1" # Card Highlight on Select
 BG_HIGHLIGHT = "#EAF4EC"     # Pastel Green
 BG_SELECTION = "#E8DCCE"     # Selection Highlight
+BG_SHADOW = "#E8E1D5"        # Sombra suave atras dos cards
 ACCENT_PRIMARY = "#8B5A2B"   # Terracotta / Brown
 TEXT_COLOR = "#2C2C2C"        # Main Text
 TEXT_MUTED = "#7D7D7D"       # Subtitles / Muted
+COR_TOGGLE_ON = "#8FCB9B"    # Verde pastel (toggle ligado)
+COR_TOGGLE_OFF = "#D9D3C8"   # Cinza claro (toggle desligado)
 
 # Paleta de círculos coloridos pastéis para os ícones
 CORES_CIRCULOS = ["#E3F2FD", "#F3E5F5", "#FFEBEE", "#E8F5E9"]
@@ -35,6 +44,7 @@ CORES_CIRCULOS = ["#E3F2FD", "#F3E5F5", "#FFEBEE", "#E8F5E9"]
 class Lembrete(TypedDict):
     nome: str
     horario: str
+    ativo: bool
 
 
 def carregar_icone(nome_arquivo: str, tamanho: tuple[int, int]) -> Optional[ImageTk.PhotoImage]:
@@ -56,7 +66,7 @@ def obter_saudacao() -> tuple[str, str]:
 
 
 def aplicar_cantos_arredondados_windows(root: tk.Tk):
-    """Aplica cantos arredondados nativos no Windows 11/10 via DWM."""
+    """Aplica cantos arredondados nativos no Windows 11/10 via DWM (para Toplevels comuns)."""
     try:
         DWMWA_WINDOW_CORNER_PREFERENCE = 33
         DWMWCP_ROUND = 2
@@ -71,6 +81,53 @@ def aplicar_cantos_arredondados_windows(root: tk.Tk):
         )
     except Exception:
         pass
+
+
+def aplicar_estilo_janela_principal(root: tk.Tk):
+    """
+    Cantos arredondados + garante presenca na barra de tarefas.
+    Necessario porque a janela principal usa overrideredirect (sem moldura
+    nativa), o que por padrao tira a janela da barra de tarefas/Alt+Tab.
+    """
+    try:
+        hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
+        if hwnd == 0:
+            hwnd = root.winfo_id()
+
+        DWMWA_WINDOW_CORNER_PREFERENCE = 33
+        DWMWCP_ROUND = 2
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            ctypes.byref(ctypes.c_int(DWMWCP_ROUND)),
+            ctypes.sizeof(ctypes.c_int),
+        )
+
+        GWL_EXSTYLE = -20
+        WS_EX_APPWINDOW = 0x00040000
+        WS_EX_TOOLWINDOW = 0x00000080
+        estilo_atual = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        novo_estilo = (estilo_atual | WS_EX_APPWINDOW) & ~WS_EX_TOOLWINDOW
+        ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, novo_estilo)
+    except Exception:
+        pass
+
+
+def habilitar_arraste(widget: tk.Widget, root: tk.Tk) -> None:
+    """Permite mover a janela clicando e arrastando um widget (barra de titulo customizada)."""
+    estado = {"x": 0, "y": 0}
+
+    def iniciar(evento):
+        estado["x"] = evento.x
+        estado["y"] = evento.y
+
+    def mover(evento):
+        x = root.winfo_x() + (evento.x - estado["x"])
+        y = root.winfo_y() + (evento.y - estado["y"])
+        root.geometry(f"+{x}+{y}")
+
+    widget.bind("<ButtonPress-1>", iniciar)
+    widget.bind("<B1-Motion>", mover)
 
 
 def criar_botao_arredondado(parent, text, command, bg_color=ACCENT_PRIMARY, fg_color="white", width=130, height=34, radius=12):
@@ -90,15 +147,80 @@ def criar_botao_arredondado(parent, text, command, bg_color=ACCENT_PRIMARY, fg_c
     return canvas
 
 
+def criar_item_sidebar(parent, texto, nome_img, comando=None, ativo=False, imagens_referencia=None):
+    """
+    Item de navegacao da sidebar. Quando 'ativo', desenha um destaque em
+    formato de pilula (canto totalmente arredondado) atras do icone+texto,
+    imitando o protótipo.
+    """
+    largura, altura = 210, 40
+    cor_fundo = BG_SELECTION if ativo else BG_SIDEBAR
+
+    canvas = tk.Canvas(parent, width=largura, height=altura, bg=BG_SIDEBAR, highlightthickness=0, cursor="hand2")
+    canvas.pack(padx=10, pady=3)
+
+    if ativo:
+        r = altura // 2
+        canvas.create_arc((0, 0, 2 * r, 2 * r), start=90, extent=90, fill=cor_fundo, outline=cor_fundo)
+        canvas.create_arc((largura - 2 * r, 0, largura, 2 * r), start=0, extent=90, fill=cor_fundo, outline=cor_fundo)
+        canvas.create_arc((0, altura - 2 * r, 2 * r, altura), start=180, extent=90, fill=cor_fundo, outline=cor_fundo)
+        canvas.create_arc((largura - 2 * r, altura - 2 * r, largura, altura), start=270, extent=90, fill=cor_fundo, outline=cor_fundo)
+        canvas.create_rectangle((r, 0, largura - r, altura), fill=cor_fundo, outline=cor_fundo)
+        canvas.create_rectangle((0, r, largura, altura - r), fill=cor_fundo, outline=cor_fundo)
+
+    img_icon = carregar_icone(nome_img, (18, 18))
+    if img_icon and imagens_referencia is not None:
+        imagens_referencia[f"nav_{texto}"] = img_icon
+        canvas.create_image(24, altura // 2, image=img_icon, anchor="w")
+
+    cor_texto = ACCENT_PRIMARY if ativo else TEXT_COLOR
+    fonte = ("Segoe UI", 10, "bold" if ativo else "normal")
+    canvas.create_text(46, altura // 2, text=texto, anchor="w", fill=cor_texto, font=fonte)
+
+    if comando:
+        canvas.bind("<Button-1>", lambda _e: comando())
+
+    return canvas
+
+
+def criar_toggle(parent, ativo: bool, ao_mudar: Callable[[bool], None]):
+    """Switch liga/desliga (estilo iOS), desenhado em Canvas."""
+    largura, altura = 34, 18
+    estado = {"ativo": ativo}
+
+    canvas = tk.Canvas(parent, width=largura, height=altura, bg=BG_CARD, highlightthickness=0, cursor="hand2")
+
+    def desenhar():
+        canvas.delete("all")
+        cor_trilho = COR_TOGGLE_ON if estado["ativo"] else COR_TOGGLE_OFF
+        r = altura // 2
+        canvas.create_oval(0, 0, altura, altura, fill=cor_trilho, outline=cor_trilho)
+        canvas.create_oval(largura - altura, 0, largura, altura, fill=cor_trilho, outline=cor_trilho)
+        canvas.create_rectangle(r, 0, largura - r, altura, fill=cor_trilho, outline=cor_trilho)
+
+        pos_x = largura - altura + 2 if estado["ativo"] else 2
+        canvas.create_oval(pos_x, 2, pos_x + altura - 4, altura - 2, fill="white", outline="white")
+
+    def alternar(_evento=None):
+        estado["ativo"] = not estado["ativo"]
+        desenhar()
+        ao_mudar(estado["ativo"])
+
+    canvas.bind("<Button-1>", alternar)
+    desenhar()
+    return canvas
+
+
 def calcular_proximo_lembrete(lembretes: list[Lembrete]) -> Optional[tuple[dict, str]]:
-    """Calculates the upcoming reminder and precise time remaining (hours, minutes, seconds)."""
-    if not lembretes:
+    """Calculates the upcoming ACTIVE reminder and precise time remaining."""
+    ativos = [item for item in lembretes if item.get("ativo", True)]
+    if not ativos:
         return None
 
     agora = datetime.now()
     proximos = []
 
-    for item in lembretes:
+    for item in ativos:
         try:
             h, m = map(int, item["horario"].split(":"))
             dt_alvo = agora.replace(hour=h, minute=m, second=0, microsecond=0)
@@ -137,20 +259,54 @@ def criar_janela_principal(
     ao_adicionar: Callable[[str, str], None],
     ao_editar: Callable[[int, str, str], None],
     ao_remover: Callable[[int], None],
+    ao_alternar_ativo: Callable[[int, bool], None],
     obter_iniciar_com_windows: Callable[[], bool],
     ao_alternar_iniciar_com_windows: Callable[[bool], None],
 ) -> tuple[tk.Tk, object]:
 
     root = tk.Tk()
     root.title("Eevee Reminder")
-    root.geometry("850x580")
+    root.overrideredirect(True)  # remove a moldura nativa do Windows
+    root.geometry("850x612")
     root.resizable(False, False)
-    root.configure(bg=BG_MAIN)
+    root.configure(bg=BG_MAIN, highlightthickness=1, highlightbackground="#D9D3C8")
 
     root.update()
-    aplicar_cantos_arredondados_windows(root)
+    aplicar_estilo_janela_principal(root)
 
     imagens_referencia = {}
+
+    # ------------------------------------------------------------------
+    # BARRA DE TITULO CUSTOMIZADA (so minimizar e fechar, cor do app)
+    # ------------------------------------------------------------------
+    titlebar = tk.Frame(root, bg=BG_MAIN, height=32)
+    titlebar.pack(side="top", fill="x")
+    titlebar.pack_propagate(False)
+    habilitar_arraste(titlebar, root)
+
+    frame_botoes_titulo = tk.Frame(titlebar, bg=BG_MAIN)
+    frame_botoes_titulo.pack(side="right", padx=6)
+
+    lbl_fechar = tk.Label(
+        frame_botoes_titulo, text="✕", font=("Segoe UI", 11), bg=BG_MAIN, fg=TEXT_MUTED, cursor="hand2", padx=8
+    )
+    lbl_fechar.pack(side="right")
+    lbl_fechar.bind("<Button-1>", lambda _e: root.withdraw())
+
+    lbl_minimizar = tk.Label(
+        frame_botoes_titulo, text="—", font=("Segoe UI", 11), bg=BG_MAIN, fg=TEXT_MUTED, cursor="hand2", padx=8
+    )
+    lbl_minimizar.pack(side="right")
+    lbl_minimizar.bind("<Button-1>", lambda _e: root.withdraw())
+
+    # ESC tambem minimiza para a bandeja (mesmo comportamento do X)
+    root.bind("<Escape>", lambda _e: root.withdraw())
+
+    # ------------------------------------------------------------------
+    # CORPO DA JANELA (sidebar + painel principal)
+    # ------------------------------------------------------------------
+    corpo = tk.Frame(root, bg=BG_MAIN)
+    corpo.pack(side="top", fill="both", expand=True)
 
     # Pré-carregar ícone da pílula
     img_pill = carregar_icone("pill.png", (20, 20))
@@ -162,49 +318,26 @@ def criar_janela_principal(
     widgets_linhas: list[dict] = []
 
     # ------------------------------------------------------------------
-    # SIDEBAR (Aumentada para 240px para acomodar o Eevee maior)
+    # SIDEBAR
     # ------------------------------------------------------------------
-    sidebar = tk.Frame(root, bg=BG_SIDEBAR, width=240)
+    sidebar = tk.Frame(corpo, bg=BG_SIDEBAR, width=240)
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
 
     tk.Frame(sidebar, bg=BG_SIDEBAR, height=15).pack(fill="x")
 
-    def criar_btn_sidebar(texto: str, nome_img: str, comando=None, ativo=False):
-        cor_bg = BG_SELECTION if ativo else BG_SIDEBAR
-        frame_btn = tk.Frame(sidebar, bg=cor_bg)
-        frame_btn.pack(fill="x", padx=10, pady=3)
-
-        img_icon = carregar_icone(nome_img, (18, 18))
-        if img_icon:
-            imagens_referencia[f"btn_{texto}"] = img_icon
-            lbl = tk.Label(frame_btn, image=img_icon, bg=cor_bg)
-            lbl.pack(side="left", padx=(12, 8), pady=8)
-
-        btn = tk.Button(
-            frame_btn,
-            text=texto,
-            font=("Segoe UI", 10, "bold" if ativo else "normal"),
-            bg=cor_bg,
-            fg=ACCENT_PRIMARY if ativo else TEXT_COLOR,
-            anchor="w",
-            bd=0,
-            activebackground=BG_SELECTION,
-            command=comando,
-        )
-        btn.pack(side="left", fill="x", expand=True)
-
-    criar_btn_sidebar("Home", "home.png", ativo=True)
-    criar_btn_sidebar(
+    criar_item_sidebar(sidebar, "Home", "home.png", ativo=True, imagens_referencia=imagens_referencia)
+    criar_item_sidebar(
+        sidebar,
         "Settings",
         "setting.png",
         comando=lambda: abrir_janela_configuracoes(root, obter_iniciar_com_windows, ao_alternar_iniciar_com_windows),
+        imagens_referencia=imagens_referencia,
     )
 
     frame_mascot_container = tk.Frame(sidebar, bg=BG_SIDEBAR)
     frame_mascot_container.pack(side="bottom", pady=(0, 15))
 
-    # Eevee aumentado para 180x180 pixels
     img_eevee_main = carregar_icone("eevee1.png", (200, 200))
     if img_eevee_main:
         imagens_referencia["eevee_main"] = img_eevee_main
@@ -223,7 +356,7 @@ def criar_janela_principal(
     # ------------------------------------------------------------------
     # MAIN PANEL
     # ------------------------------------------------------------------
-    main_panel = tk.Frame(root, bg=BG_MAIN, padx=25, pady=20)
+    main_panel = tk.Frame(corpo, bg=BG_MAIN, padx=25, pady=20)
     main_panel.pack(side="right", fill="both", expand=True)
 
     saudacao_texto, icone_saudacao = obter_saudacao()
@@ -243,12 +376,14 @@ def criar_janela_principal(
     )
 
     # ------------------------------------------------------------------
-    # CLEAN SCHEDULE CARD CONTAINER
+    # CARD "TODAY'S SCHEDULE" (com sombra suave)
     # ------------------------------------------------------------------
-    card_container = tk.Frame(main_panel, bg=BG_CARD, highlightthickness=1, highlightbackground="#EFEBE4")
-    card_container.pack(fill="x", pady=(0, 12))
+    card_wrapper = tk.Frame(main_panel, bg=BG_SHADOW)
+    card_wrapper.pack(fill="x", pady=(0, 12))
 
-    # Cabeçalho do Card
+    card_container = tk.Frame(card_wrapper, bg=BG_CARD, highlightthickness=1, highlightbackground="#EFEBE4")
+    card_container.pack(fill="x", padx=(0, 3), pady=(0, 3))
+
     frame_topo_tabela = tk.Frame(card_container, bg=BG_CARD, padx=16, pady=12)
     frame_topo_tabela.pack(fill="x")
 
@@ -269,15 +404,12 @@ def criar_janela_principal(
     btn_add = criar_botao_arredondado(frame_topo_tabela, "+ Add Reminder", lambda: abrir_modal_formulario(), width=120, height=32)
     btn_add.pack(side="right")
 
-    # Lista Interna dos Remédios
     frame_lista_remedios = tk.Frame(card_container, bg=BG_CARD, padx=16)
     frame_lista_remedios.pack(fill="x", pady=(0, 12))
 
-    # Referência dinâmica para manter dados sincronizados
     lista_dados_lembretes = list(lembretes_iniciais)
 
     def atualizar_destaque_selecao():
-        """Aplica estilo visual de seleção na linha atualmente focada."""
         nonlocal indice_selecionado
         for i, item_dict in enumerate(widgets_linhas):
             cor_bg = BG_CARD_SELECTED if i == indice_selecionado else BG_CARD
@@ -304,7 +436,7 @@ def criar_janela_principal(
             indice_selecionado = None
             recarregar_lista()
 
-    def desenhar_item_remedio(nome: str, horario: str, indice: int):
+    def desenhar_item_remedio(nome: str, horario: str, ativo_item: bool, indice: int):
         if len(frame_lista_remedios.winfo_children()) > 0:
             div = tk.Frame(frame_lista_remedios, bg="#F3EEE8", height=1)
             div.pack(fill="x", pady=6)
@@ -328,39 +460,58 @@ def criar_janela_principal(
         lbl_nome = tk.Label(frame_info, text=nome, font=("Segoe UI", 10, "bold"), bg=BG_CARD, fg=TEXT_COLOR, anchor="w")
         lbl_nome.pack(fill="x")
 
-        lbl_sub = tk.Label(frame_info, text="1 tablet • Daily", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="w")
+        lbl_sub = tk.Label(frame_info, text="Daily reminder", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="w")
         lbl_sub.pack(fill="x")
 
-        # 3. Horário e Status
+        # 3. Icone de 3 pontos (menu visivel, alem do botao direito)
+        def acionar_ao_remover():
+            ao_remover(indice)
+            lista_dados_lembretes.pop(indice)
+            recarregar_lista()
+
+        menu_ctx = tk.Menu(item_row, tearoff=0)
+        menu_ctx.add_command(label="Edit", command=lambda: abrir_modal_formulario(indice))
+        menu_ctx.add_command(label="Delete", command=acionar_ao_remover)
+
+        def exibir_menu_em(widget_origem):
+            selecionar_item(indice)
+            x = widget_origem.winfo_rootx()
+            y = widget_origem.winfo_rooty() + widget_origem.winfo_height()
+            menu_ctx.tk_popup(x, y)
+
+        lbl_pontos = tk.Label(item_row, text="⋮", font=("Segoe UI", 13, "bold"), bg=BG_CARD, fg=TEXT_MUTED, cursor="hand2", padx=6)
+        lbl_pontos.pack(side="right")
+        lbl_pontos.bind("<Button-1>", lambda _e, w=lbl_pontos: exibir_menu_em(w))
+
+        # 4. Toggle liga/desliga
+        def ao_mudar_toggle(novo_valor: bool, idx=indice):
+            lista_dados_lembretes[idx]["ativo"] = novo_valor
+            ao_alternar_ativo(idx, novo_valor)
+
+        toggle = criar_toggle(item_row, ativo_item, ao_mudar_toggle)
+        toggle.pack(side="right", padx=(8, 4))
+
+        # 5. Horário e frequência
         frame_time = tk.Frame(item_row, bg=BG_CARD)
         frame_time.pack(side="right", padx=(10, 5))
 
         lbl_hora = tk.Label(frame_time, text=horario, font=("Segoe UI", 11, "bold"), bg=BG_CARD, fg=TEXT_COLOR, anchor="e")
         lbl_hora.pack(fill="x")
 
-        lbl_status = tk.Label(frame_time, text="Scheduled", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="e")
+        lbl_status = tk.Label(frame_time, text="Daily", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="e")
         lbl_status.pack(fill="x")
 
-        elementos = [item_row, canvas_icon, frame_info, lbl_nome, lbl_sub, frame_time, lbl_hora, lbl_status]
+        elementos = [item_row, canvas_icon, frame_info, lbl_nome, lbl_sub, frame_time, lbl_hora, lbl_status, lbl_pontos]
         widgets_linhas.append({"row": item_row, "widgets": elementos})
 
-        # Menu Contextual (Editar / Deletar no botão direito)
-        menu_ctx = tk.Menu(item_row, tearoff=0)
-        menu_ctx.add_command(label="Edit", command=lambda: abrir_modal_formulario(indice))
-        menu_ctx.add_command(
-            label="Delete",
-            command=lambda: (ao_remover(indice), lista_dados_lembretes.pop(indice), recarregar_lista()),
-        )
-
-        def exibir_menu(e):
+        def exibir_menu_botao_direito(e):
             selecionar_item(indice)
             menu_ctx.tk_popup(e.x_root, e.y_root)
 
-        # Eventos para interação e seleção
         for widget in elementos:
             widget.bind("<Button-1>", lambda _e, idx=indice: selecionar_item(idx))
             widget.bind("<Double-1>", lambda _e, idx=indice: abrir_modal_formulario(idx))
-            widget.bind("<Button-3>", exibir_menu)
+            widget.bind("<Button-3>", exibir_menu_botao_direito)
 
     def recarregar_lista():
         nonlocal widgets_linhas
@@ -368,7 +519,7 @@ def criar_janela_principal(
         for w in frame_lista_remedios.winfo_children():
             w.destroy()
         for idx, item in enumerate(lista_dados_lembretes):
-            desenhar_item_remedio(item["nome"], item["horario"], idx)
+            desenhar_item_remedio(item["nome"], item["horario"], item.get("ativo", True), idx)
         atualizar_destaque_selecao()
 
     recarregar_lista()
@@ -387,10 +538,13 @@ def criar_janela_principal(
     root.bind("<Return>", acao_tecla_enter)
 
     # ------------------------------------------------------------------
-    # CARD "NEXT MEDICATION"
+    # CARD "NEXT MEDICATION" (com sombra suave)
     # ------------------------------------------------------------------
-    card_next = tk.Frame(main_panel, bg=BG_HIGHLIGHT, padx=15, pady=12, highlightthickness=1, highlightbackground="#D2E3D5")
-    card_next.pack(fill="x")
+    card_next_wrapper = tk.Frame(main_panel, bg=BG_SHADOW)
+    card_next_wrapper.pack(fill="x")
+
+    card_next = tk.Frame(card_next_wrapper, bg=BG_HIGHLIGHT, padx=15, pady=12, highlightthickness=1, highlightbackground="#D2E3D5")
+    card_next.pack(fill="x", padx=(0, 3), pady=(0, 3))
 
     img_clock = carregar_icone("clock.png", (32, 32))
     if img_clock:
@@ -473,10 +627,11 @@ def criar_janela_principal(
 
             if indice_edicao is None:
                 ao_adicionar(nome, horario)
-                lista_dados_lembretes.append({"nome": nome, "horario": horario})
+                lista_dados_lembretes.append({"nome": nome, "horario": horario, "ativo": True})
             else:
+                ativo_existente = lista_dados_lembretes[indice_edicao].get("ativo", True)
                 ao_editar(indice_edicao, nome, horario)
-                lista_dados_lembretes[indice_edicao] = {"nome": nome, "horario": horario}
+                lista_dados_lembretes[indice_edicao] = {"nome": nome, "horario": horario, "ativo": ativo_existente}
 
             indice_selecionado = None
             recarregar_lista()
