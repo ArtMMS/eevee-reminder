@@ -125,18 +125,42 @@
   ('libffi-8.dll',
    'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\libffi-8.dll',
    'BINARY'),
+  ('tcl9tk90.dll',
+   'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\tcl9tk90.dll',
+   'BINARY'),
   ('libtommath.dll',
    'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\libtommath.dll',
    'BINARY'),
   ('tcl90.dll',
    'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\tcl90.dll',
    'BINARY'),
-  ('tcl9tk90.dll',
-   'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\tcl9tk90.dll',
-   'BINARY'),
   ('zlib1.dll',
    'C:\\Users\\artma\\AppData\\Local\\Programs\\Python\\Python314\\DLLs\\zlib1.dll',
    'BINARY'),
+  ('assets\\clock.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\clock.png',
+   'DATA'),
+  ('assets\\eevee1.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\eevee1.png',
+   'DATA'),
+  ('assets\\eevee2.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\eevee2.png',
+   'DATA'),
+  ('assets\\event.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\event.png',
+   'DATA'),
+  ('assets\\half-moon.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\half-moon.png',
+   'DATA'),
+  ('assets\\home.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\home.png',
+   'DATA'),
   ('assets\\icon.ico',
    'C:\\Users\\artma\\OneDrive\\Área de '
    'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\icon.ico',
@@ -149,13 +173,25 @@
    'C:\\Users\\artma\\OneDrive\\Área de '
    'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\interface idea.png',
    'DATA'),
+  ('assets\\pill.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\pill.png',
+   'DATA'),
   ('assets\\pop up idea.jpg',
    'C:\\Users\\artma\\OneDrive\\Área de '
    'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\pop up idea.jpg',
    'DATA'),
+  ('assets\\setting.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\setting.png',
+   'DATA'),
   ('assets\\sounds\\alert.wav',
    'C:\\Users\\artma\\OneDrive\\Área de '
    'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\sounds\\alert.wav',
+   'DATA'),
+  ('assets\\sun.png',
+   'C:\\Users\\artma\\OneDrive\\Área de '
+   'Trabalho\\code\\projetos\\lembrete_remedio\\assets\\sun.png',
    'DATA'),
   ('base_library.zip',
    'C:\\Users\\artma\\OneDrive\\Área de '

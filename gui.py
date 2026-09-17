@@ -1,9 +1,11 @@
 """
 gui.py
-Modern GUI (Tkinter / TTK) with Pastel theme and Eevee mascot.
-Integrated PNG Assets: eevee1, clock, event, home, setting, sun, half-moon, pill.
+Modern GUI (Tkinter / Custom Cards) with Pastel theme, custom window layout, and Eevee mascot.
+Integrated PNG Assets: eevee1, eevee2, clock, event, home, setting, sun, half-moon, pill.
+Includes keyboard selection, DEL key item removal functionality, and enlarged Eevee mascot.
 """
 
+import ctypes
 import os
 import tkinter as tk
 from datetime import datetime
@@ -14,16 +16,20 @@ from PIL import Image, ImageTk
 from resources import pasta_recursos
 
 # ----------------------------------------------------------------------
-# GLOBAL COLOR PALETTE (Eevee Pastel Theme)
+# GLOBAL COLOR PALETTE & CONFIG
 # ----------------------------------------------------------------------
-BG_MAIN = "#FAF6F0"       # Light Cream
-BG_SIDEBAR = "#F5EBE1"    # Soft Cream (Sidebar)
-BG_CARD = "#FFFFFF"       # White
-BG_HIGHLIGHT = "#EAF4EC"  # Pastel Green
-BG_SELECTION = "#E8DCCE"  # Selection Highlight
-ACCENT_PRIMARY = "#8B5A2B" # Terracotta / Brown
-TEXT_COLOR = "#2C2C2C"     # Main Text
-TEXT_MUTED = "#7D7D7D"    # Subtitles / Muted
+BG_MAIN = "#FAF6F0"          # Light Cream
+BG_SIDEBAR = "#F5EBE1"       # Soft Cream (Sidebar)
+BG_CARD = "#FFFFFF"          # White Card Background
+BG_CARD_SELECTED = "#F5EBE1" # Card Highlight on Select
+BG_HIGHLIGHT = "#EAF4EC"     # Pastel Green
+BG_SELECTION = "#E8DCCE"     # Selection Highlight
+ACCENT_PRIMARY = "#8B5A2B"   # Terracotta / Brown
+TEXT_COLOR = "#2C2C2C"        # Main Text
+TEXT_MUTED = "#7D7D7D"       # Subtitles / Muted
+
+# Paleta de círculos coloridos pastéis para os ícones
+CORES_CIRCULOS = ["#E3F2FD", "#F3E5F5", "#FFEBEE", "#E8F5E9"]
 
 
 class Lembrete(TypedDict):
@@ -49,19 +55,37 @@ def obter_saudacao() -> tuple[str, str]:
     return "Welcome back!", "half-moon.png"
 
 
+def aplicar_cantos_arredondados_windows(root: tk.Tk):
+    """Aplica cantos arredondados nativos no Windows 11/10 via DWM."""
+    try:
+        DWMWA_WINDOW_CORNER_PREFERENCE = 33
+        DWMWCP_ROUND = 2
+        hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
+        if hwnd == 0:
+            hwnd = root.winfo_id()
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            ctypes.byref(ctypes.c_int(DWMWCP_ROUND)),
+            ctypes.sizeof(ctypes.c_int),
+        )
+    except Exception:
+        pass
+
+
 def criar_botao_arredondado(parent, text, command, bg_color=ACCENT_PRIMARY, fg_color="white", width=130, height=34, radius=12):
     """Generates a smooth rounded button using native Tkinter Canvas."""
     canvas = tk.Canvas(parent, width=width, height=height, bg=parent["bg"], highlightthickness=0, cursor="hand2")
-    
-    r = radius
-    canvas.create_arc((0, 0, 2*r, 2*r), start=90, extent=90, fill=bg_color, outline=bg_color)
-    canvas.create_arc((width-2*r, 0, width, 2*r), start=0, extent=90, fill=bg_color, outline=bg_color)
-    canvas.create_arc((0, height-2*r, 2*r, height), start=180, extent=90, fill=bg_color, outline=bg_color)
-    canvas.create_arc((width-2*r, height-2*r, width, height), start=270, extent=90, fill=bg_color, outline=bg_color)
-    canvas.create_rectangle((r, 0, width-r, height), fill=bg_color, outline=bg_color)
-    canvas.create_rectangle((0, r, width, height-r), fill=bg_color, outline=bg_color)
 
-    canvas.create_text(width/2, height/2, text=text, fill=fg_color, font=("Segoe UI", 9, "bold"))
+    r = radius
+    canvas.create_arc((0, 0, 2 * r, 2 * r), start=90, extent=90, fill=bg_color, outline=bg_color)
+    canvas.create_arc((width - 2 * r, 0, width, 2 * r), start=0, extent=90, fill=bg_color, outline=bg_color)
+    canvas.create_arc((0, height - 2 * r, 2 * r, height), start=180, extent=90, fill=bg_color, outline=bg_color)
+    canvas.create_arc((width - 2 * r, height - 2 * r, width, height), start=270, extent=90, fill=bg_color, outline=bg_color)
+    canvas.create_rectangle((r, 0, width - r, height), fill=bg_color, outline=bg_color)
+    canvas.create_rectangle((0, r, width, height - r), fill=bg_color, outline=bg_color)
+
+    canvas.create_text(width / 2, height / 2, text=text, fill=fg_color, font=("Segoe UI", 9, "bold"))
     canvas.bind("<Button-1>", lambda _e: command())
     return canvas
 
@@ -80,7 +104,7 @@ def calcular_proximo_lembrete(lembretes: list[Lembrete]) -> Optional[tuple[dict,
             dt_alvo = agora.replace(hour=h, minute=m, second=0, microsecond=0)
             if dt_alvo < agora:
                 dt_alvo = dt_alvo.replace(day=agora.day + 1)
-            
+
             diferenca = dt_alvo - agora
             proximos.append((diferenca.total_seconds(), item, dt_alvo))
         except ValueError:
@@ -115,47 +139,36 @@ def criar_janela_principal(
     ao_remover: Callable[[int], None],
     obter_iniciar_com_windows: Callable[[], bool],
     ao_alternar_iniciar_com_windows: Callable[[bool], None],
-) -> tuple[tk.Tk, ttk.Treeview]:
+) -> tuple[tk.Tk, object]:
 
     root = tk.Tk()
     root.title("Eevee Reminder")
-    root.geometry("820x530")
+    root.geometry("850x580")
     root.resizable(False, False)
     root.configure(bg=BG_MAIN)
 
+    root.update()
+    aplicar_cantos_arredondados_windows(root)
+
     imagens_referencia = {}
 
-    # TTK Flat Style
-    style = ttk.Style(root)
-    style.theme_use("clam")
-    style.configure(
-        "Treeview",
-        background=BG_CARD,
-        fieldbackground=BG_CARD,
-        foreground=TEXT_COLOR,
-        rowheight=38,
-        font=("Segoe UI", 10),
-        borderwidth=0,
-        relief="flat",
-    )
-    style.configure(
-        "Treeview.Heading",
-        background=BG_MAIN,
-        foreground=TEXT_MUTED,
-        font=("Segoe UI", 8, "bold"),
-        borderwidth=0,
-        relief="flat",
-    )
-    style.map("Treeview", background=[("selected", BG_SELECTION)], foreground=[("selected", TEXT_COLOR)])
+    # Pré-carregar ícone da pílula
+    img_pill = carregar_icone("pill.png", (20, 20))
+    if img_pill:
+        imagens_referencia["pill"] = img_pill
+
+    # Controle de seleção atual
+    indice_selecionado: Optional[int] = None
+    widgets_linhas: list[dict] = []
 
     # ------------------------------------------------------------------
-    # SIDEBAR
+    # SIDEBAR (Aumentada para 240px para acomodar o Eevee maior)
     # ------------------------------------------------------------------
-    sidebar = tk.Frame(root, bg=BG_SIDEBAR, width=210)
+    sidebar = tk.Frame(root, bg=BG_SIDEBAR, width=240)
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
 
-    tk.Frame(sidebar, bg=BG_SIDEBAR, height=20).pack(fill="x")
+    tk.Frame(sidebar, bg=BG_SIDEBAR, height=15).pack(fill="x")
 
     def criar_btn_sidebar(texto: str, nome_img: str, comando=None, ativo=False):
         cor_bg = BG_SELECTION if ativo else BG_SIDEBAR
@@ -191,16 +204,17 @@ def criar_janela_principal(
     frame_mascot_container = tk.Frame(sidebar, bg=BG_SIDEBAR)
     frame_mascot_container.pack(side="bottom", pady=(0, 15))
 
-    img_eevee_main = carregar_icone("eevee1.png", (140, 140))
+    # Eevee aumentado para 180x180 pixels
+    img_eevee_main = carregar_icone("eevee1.png", (200, 200))
     if img_eevee_main:
         imagens_referencia["eevee_main"] = img_eevee_main
         lbl_eevee = tk.Label(frame_mascot_container, image=img_eevee_main, bg=BG_SIDEBAR)
-        lbl_eevee.pack(pady=(0, 6))
+        lbl_eevee.pack(pady=(0, 4))
 
     tk.Label(
         frame_mascot_container,
         text="Small steps\nfor a healthier you! ♥",
-        font=("Segoe UI", 8),
+        font=("Segoe UI", 8, "bold"),
         bg=BG_SIDEBAR,
         fg=TEXT_MUTED,
         justify="center",
@@ -217,48 +231,164 @@ def criar_janela_principal(
     frame_saudacao.pack(anchor="w")
 
     tk.Label(frame_saudacao, text=saudacao_texto, font=("Segoe UI", 18, "bold"), bg=BG_MAIN, fg=TEXT_COLOR).pack(side="left")
-    
+
     img_sol_lua = carregar_icone(icone_saudacao, (24, 24))
     if img_sol_lua:
         imagens_referencia["saudacao"] = img_sol_lua
         lbl_sol = tk.Label(frame_saudacao, image=img_sol_lua, bg=BG_MAIN)
         lbl_sol.pack(side="left", padx=8)
 
-    tk.Label(main_panel, text="Here are your medication reminders.", font=("Segoe UI", 10), bg=BG_MAIN, fg=TEXT_MUTED).pack(anchor="w", pady=(0, 15))
+    tk.Label(main_panel, text="Here are your medication reminders.", font=("Segoe UI", 10), bg=BG_MAIN, fg=TEXT_MUTED).pack(
+        anchor="w", pady=(0, 12)
+    )
 
-    frame_topo_tabela = tk.Frame(main_panel, bg=BG_MAIN)
-    frame_topo_tabela.pack(fill="x", pady=(0, 10))
+    # ------------------------------------------------------------------
+    # CLEAN SCHEDULE CARD CONTAINER
+    # ------------------------------------------------------------------
+    card_container = tk.Frame(main_panel, bg=BG_CARD, highlightthickness=1, highlightbackground="#EFEBE4")
+    card_container.pack(fill="x", pady=(0, 12))
 
-    img_event = carregar_icone("event.png", (18, 18))
+    # Cabeçalho do Card
+    frame_topo_tabela = tk.Frame(card_container, bg=BG_CARD, padx=16, pady=12)
+    frame_topo_tabela.pack(fill="x")
+
+    img_event = carregar_icone("event.png", (20, 20))
     if img_event:
         imagens_referencia["event"] = img_event
-        lbl_ev = tk.Label(frame_topo_tabela, image=img_event, bg=BG_MAIN)
-        lbl_ev.pack(side="left", padx=(0, 6))
+        lbl_ev = tk.Label(frame_topo_tabela, image=img_event, bg=BG_CARD)
+        lbl_ev.pack(side="left", padx=(0, 8))
 
-    tk.Label(frame_topo_tabela, text="Today's Schedule", font=("Segoe UI", 11, "bold"), bg=BG_MAIN, fg=TEXT_COLOR).pack(side="left")
+    tk.Label(
+        frame_topo_tabela,
+        text="Today's Schedule",
+        font=("Segoe UI", 11, "bold"),
+        bg=BG_CARD,
+        fg=TEXT_COLOR,
+    ).pack(side="left")
 
-    # Table Setup (Column #0 for Pill Icon + Text)
-    tabela = ttk.Treeview(main_panel, columns=("horario",), displaycolumns=("horario",), height=6)
-    tabela.heading("#0", text="MEDICATION", anchor="w")
-    tabela.heading("horario", text="TIME", anchor="center")
-    tabela.column("#0", width=360, anchor="w")
-    tabela.column("horario", width=120, anchor="center")
-    tabela.pack(fill="x", pady=(0, 12))
+    btn_add = criar_botao_arredondado(frame_topo_tabela, "+ Add Reminder", lambda: abrir_modal_formulario(), width=120, height=32)
+    btn_add.pack(side="right")
 
-    img_pill = carregar_icone("pill.png", (18, 18))
-    if img_pill:
-        imagens_referencia["pill"] = img_pill
+    # Lista Interna dos Remédios
+    frame_lista_remedios = tk.Frame(card_container, bg=BG_CARD, padx=16)
+    frame_lista_remedios.pack(fill="x", pady=(0, 12))
 
-    def inserir_item_tabela(nome: str, horario: str):
-        kw = {"text": f"  {nome}", "values": (horario,)}
-        if img_pill:
-            kw["image"] = img_pill
-        tabela.insert("", "end", **kw)
+    # Referência dinâmica para manter dados sincronizados
+    lista_dados_lembretes = list(lembretes_iniciais)
 
-    for item in lembretes_iniciais:
-        inserir_item_tabela(item["nome"], item["horario"])
+    def atualizar_destaque_selecao():
+        """Aplica estilo visual de seleção na linha atualmente focada."""
+        nonlocal indice_selecionado
+        for i, item_dict in enumerate(widgets_linhas):
+            cor_bg = BG_CARD_SELECTED if i == indice_selecionado else BG_CARD
+            row = item_dict["row"]
+            row.config(bg=cor_bg)
+            for child in item_dict["widgets"]:
+                try:
+                    child.config(bg=cor_bg)
+                except tk.TclError:
+                    pass
 
-    # Card "Next Medication"
+    def selecionar_item(indice: int):
+        nonlocal indice_selecionado
+        indice_selecionado = indice
+        atualizar_destaque_selecao()
+        root.focus_set()
+
+    def deletar_item_selecionado():
+        nonlocal indice_selecionado
+        if indice_selecionado is not None and 0 <= indice_selecionado < len(lista_dados_lembretes):
+            idx = indice_selecionado
+            ao_remover(idx)
+            lista_dados_lembretes.pop(idx)
+            indice_selecionado = None
+            recarregar_lista()
+
+    def desenhar_item_remedio(nome: str, horario: str, indice: int):
+        if len(frame_lista_remedios.winfo_children()) > 0:
+            div = tk.Frame(frame_lista_remedios, bg="#F3EEE8", height=1)
+            div.pack(fill="x", pady=6)
+
+        item_row = tk.Frame(frame_lista_remedios, bg=BG_CARD, cursor="hand2")
+        item_row.pack(fill="x", pady=2)
+
+        # 1. Ícone em Círculo Pastel
+        cor_fundo_circulo = CORES_CIRCULOS[indice % len(CORES_CIRCULOS)]
+        canvas_icon = tk.Canvas(item_row, width=38, height=38, bg=BG_CARD, highlightthickness=0)
+        canvas_icon.pack(side="left", padx=(0, 12))
+
+        canvas_icon.create_oval(2, 2, 36, 36, fill=cor_fundo_circulo, outline=cor_fundo_circulo)
+        if "pill" in imagens_referencia:
+            canvas_icon.create_image(19, 19, image=imagens_referencia["pill"])
+
+        # 2. Informações principais (Nome + Frequência)
+        frame_info = tk.Frame(item_row, bg=BG_CARD)
+        frame_info.pack(side="left", fill="y")
+
+        lbl_nome = tk.Label(frame_info, text=nome, font=("Segoe UI", 10, "bold"), bg=BG_CARD, fg=TEXT_COLOR, anchor="w")
+        lbl_nome.pack(fill="x")
+
+        lbl_sub = tk.Label(frame_info, text="1 tablet • Daily", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="w")
+        lbl_sub.pack(fill="x")
+
+        # 3. Horário e Status
+        frame_time = tk.Frame(item_row, bg=BG_CARD)
+        frame_time.pack(side="right", padx=(10, 5))
+
+        lbl_hora = tk.Label(frame_time, text=horario, font=("Segoe UI", 11, "bold"), bg=BG_CARD, fg=TEXT_COLOR, anchor="e")
+        lbl_hora.pack(fill="x")
+
+        lbl_status = tk.Label(frame_time, text="Scheduled", font=("Segoe UI", 8), bg=BG_CARD, fg=TEXT_MUTED, anchor="e")
+        lbl_status.pack(fill="x")
+
+        elementos = [item_row, canvas_icon, frame_info, lbl_nome, lbl_sub, frame_time, lbl_hora, lbl_status]
+        widgets_linhas.append({"row": item_row, "widgets": elementos})
+
+        # Menu Contextual (Editar / Deletar no botão direito)
+        menu_ctx = tk.Menu(item_row, tearoff=0)
+        menu_ctx.add_command(label="Edit", command=lambda: abrir_modal_formulario(indice))
+        menu_ctx.add_command(
+            label="Delete",
+            command=lambda: (ao_remover(indice), lista_dados_lembretes.pop(indice), recarregar_lista()),
+        )
+
+        def exibir_menu(e):
+            selecionar_item(indice)
+            menu_ctx.tk_popup(e.x_root, e.y_root)
+
+        # Eventos para interação e seleção
+        for widget in elementos:
+            widget.bind("<Button-1>", lambda _e, idx=indice: selecionar_item(idx))
+            widget.bind("<Double-1>", lambda _e, idx=indice: abrir_modal_formulario(idx))
+            widget.bind("<Button-3>", exibir_menu)
+
+    def recarregar_lista():
+        nonlocal widgets_linhas
+        widgets_linhas.clear()
+        for w in frame_lista_remedios.winfo_children():
+            w.destroy()
+        for idx, item in enumerate(lista_dados_lembretes):
+            desenhar_item_remedio(item["nome"], item["horario"], idx)
+        atualizar_destaque_selecao()
+
+    recarregar_lista()
+
+    # ------------------------------------------------------------------
+    # ATALHOS DE TECLADO (DEL e ENTER)
+    # ------------------------------------------------------------------
+    def acao_tecla_delete(_event):
+        deletar_item_selecionado()
+
+    def acao_tecla_enter(_event):
+        if indice_selecionado is not None and 0 <= indice_selecionado < len(lista_dados_lembretes):
+            abrir_modal_formulario(indice_selecionado)
+
+    root.bind("<Delete>", acao_tecla_delete)
+    root.bind("<Return>", acao_tecla_enter)
+
+    # ------------------------------------------------------------------
+    # CARD "NEXT MEDICATION"
+    # ------------------------------------------------------------------
     card_next = tk.Frame(main_panel, bg=BG_HIGHLIGHT, padx=15, pady=12, highlightthickness=1, highlightbackground="#D2E3D5")
     card_next.pack(fill="x")
 
@@ -271,23 +401,22 @@ def criar_janela_principal(
     frame_info_next = tk.Frame(card_next, bg=BG_HIGHLIGHT)
     frame_info_next.pack(side="left", fill="both")
 
-    tk.Label(frame_info_next, text="Next Medication", font=("Segoe UI", 8, "bold"), bg=BG_HIGHLIGHT, fg=TEXT_MUTED).pack(anchor="w")
-    lbl_next_detalhe = tk.Label(frame_info_next, text="No scheduled reminders", font=("Segoe UI", 11, "bold"), bg=BG_HIGHLIGHT, fg=TEXT_COLOR)
+    tk.Label(frame_info_next, text="Next Medication", font=("Segoe UI", 8, "bold"), bg=BG_HIGHLIGHT, fg=TEXT_MUTED).pack(
+        anchor="w"
+    )
+    lbl_next_detalhe = tk.Label(
+        frame_info_next, text="No scheduled reminders", font=("Segoe UI", 11, "bold"), bg=BG_HIGHLIGHT, fg=TEXT_COLOR
+    )
     lbl_next_detalhe.pack(anchor="w")
 
-    # Real-time ticking update loop (Every 1000ms / 1 sec)
     def atualizar_card_loop():
-        lembretes_atuais = [
-            {"nome": tabela.item(c)["text"].strip(), "horario": tabela.item(c)["values"][0]}
-            for c in tabela.get_children()
-        ]
-        res = calcular_proximo_lembrete(lembretes_atuais)
+        res = calcular_proximo_lembrete(lista_dados_lembretes)
         if res:
             item, tempo = res
             lbl_next_detalhe.config(text=f"{item['horario']} — {item['nome']} ({tempo})")
         else:
             lbl_next_detalhe.config(text="No scheduled reminders")
-        
+
         root.after(1000, atualizar_card_loop)
 
     atualizar_card_loop()
@@ -304,7 +433,12 @@ def criar_janela_principal(
         modal.transient(root)
         modal.grab_set()
 
-        tk.Label(modal, text="Medication Details", font=("Segoe UI", 12, "bold"), bg=BG_CARD, fg=ACCENT_PRIMARY).pack(pady=(15, 10))
+        modal.update()
+        aplicar_cantos_arredondados_windows(modal)
+
+        tk.Label(modal, text="Medication Details", font=("Segoe UI", 12, "bold"), bg=BG_CARD, fg=ACCENT_PRIMARY).pack(
+            pady=(15, 10)
+        )
 
         frame_campos = tk.Frame(modal, bg=BG_CARD, padx=20)
         frame_campos.pack(fill="x")
@@ -318,13 +452,12 @@ def criar_janela_principal(
         ent_horario.pack(fill="x", pady=(2, 15))
 
         if indice_edicao is not None:
-            item_id = tabela.get_children()[indice_edicao]
-            val_nome = tabela.item(item_id, "text").strip()
-            val_horario = tabela.item(item_id, "values")[0]
-            ent_nome.insert(0, val_nome)
-            ent_horario.insert(0, val_horario)
+            item = lista_dados_lembretes[indice_edicao]
+            ent_nome.insert(0, item["nome"])
+            ent_horario.insert(0, item["horario"])
 
         def salvar():
+            nonlocal indice_selecionado
             nome = ent_nome.get().strip()
             horario = ent_horario.get().strip()
 
@@ -340,41 +473,20 @@ def criar_janela_principal(
 
             if indice_edicao is None:
                 ao_adicionar(nome, horario)
-                inserir_item_tabela(nome, horario)
+                lista_dados_lembretes.append({"nome": nome, "horario": horario})
             else:
                 ao_editar(indice_edicao, nome, horario)
-                item_id = tabela.get_children()[indice_edicao]
-                tabela.item(item_id, text=f"  {nome}", values=(horario,))
+                lista_dados_lembretes[indice_edicao] = {"nome": nome, "horario": horario}
 
+            indice_selecionado = None
+            recarregar_lista()
             modal.destroy()
 
         btn_modal = criar_botao_arredondado(modal, "Save", salvar, width=120, height=32)
         btn_modal.pack(pady=5)
 
-    btn_add = criar_botao_arredondado(frame_topo_tabela, "+ Add Reminder", lambda: abrir_modal_formulario(), width=120, height=32)
-    btn_add.pack(side="right")
-
-    def duplo_clique(_e):
-        sel = tabela.selection()
-        if not sel:
-            return
-        idx = tabela.index(sel[0])
-        abrir_modal_formulario(idx)
-
-    tabela.bind("<Double-1>", duplo_clique)
-
-    def remover_selecionado():
-        sel = tabela.selection()
-        if not sel:
-            return
-        idx = tabela.index(sel[0])
-        ao_remover(idx)
-        tabela.delete(sel[0])
-
-    tabela.bind("<Delete>", lambda _e: remover_selecionado())
-
     root.imagens_referencia = imagens_referencia
-    return root, tabela
+    return root, frame_lista_remedios
 
 
 def abrir_janela_configuracoes(
@@ -387,6 +499,9 @@ def abrir_janela_configuracoes(
     janela.geometry("320x160")
     janela.resizable(False, False)
     janela.attributes("-topmost", True)
+
+    janela.update()
+    aplicar_cantos_arredondados_windows(janela)
 
     tk.Label(janela, text="Settings", font=("Segoe UI", 12, "bold")).pack(pady=(20, 15))
 
@@ -414,13 +529,14 @@ def mostrar_popup(
     popup.configure(bg="#FAF6F0")
     popup.attributes("-topmost", True)
 
+    popup.update()
+    aplicar_cantos_arredondados_windows(popup)
+
     popup.protocol("WM_DELETE_WINDOW", lambda: (ao_confirmar(), popup.destroy()))
 
-    # Frame Principal
     container = tk.Frame(popup, bg="#FAF6F0", padx=15, pady=15)
     container.pack(fill="both", expand=True)
 
-    # Lado Esquerdo: Eevee Frontal (eevee2.png)
     img_eevee = carregar_icone("eevee2.png", (140, 140))
     if not img_eevee:
         img_eevee = carregar_icone("eevee1.png", (140, 140))
@@ -430,11 +546,9 @@ def mostrar_popup(
         lbl_img.image = img_eevee
         lbl_img.pack(side="left", padx=(5, 15), anchor="c")
 
-    # Lado Direito: Título + Subtítulo + Botões Empilhados
     frame_direito = tk.Frame(container, bg="#FAF6F0")
     frame_direito.pack(side="left", fill="both", expand=True)
 
-    # Título Principal
     tk.Label(
         frame_direito,
         text="Next Medication",
@@ -444,7 +558,6 @@ def mostrar_popup(
         anchor="w",
     ).pack(fill="x", pady=(0, 2))
 
-    # Detalhe do Remédio (ex: "teste — 02:15")
     tk.Label(
         frame_direito,
         text=mensagem,
@@ -454,18 +567,16 @@ def mostrar_popup(
         anchor="w",
     ).pack(fill="x", pady=(0, 10))
 
-    # Ações
     def acao_tomei():
         ao_confirmar()
         popup.destroy()
 
-    def acao_adiar():
+    def acao_adiar_popup():
         ao_confirmar()
         if ao_adiar:
             ao_adiar()
         popup.destroy()
 
-    # Botão "Confirm" (empilhado)
     btn_confirm = criar_botao_arredondado(
         frame_direito,
         text="Confirm",
@@ -478,12 +589,11 @@ def mostrar_popup(
     )
     btn_confirm.pack(anchor="w", pady=(0, 6))
 
-    # Botão "Snooze 5 Minutes" (empilhado)
     if ao_adiar:
         btn_snooze = criar_botao_arredondado(
             frame_direito,
             text="Snooze 5 minutes",
-            command=acao_adiar,
+            command=acao_adiar_popup,
             bg_color="#F5EBE1",
             fg_color="#1A1C2E",
             width=180,
