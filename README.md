@@ -1,8 +1,12 @@
 # Eevee Reminder
 
+
+<p align="center">
+  <img src="assets/degz79l-93bea74f-0e86-4be4-88b4-c9d03753b9aa.gif" alt="GIF do projeto" />
+</p>
+
+
 <p align="center"><a href="https://github.com/ArtMMS/eevee-reminder/releases/download/v1.1.0/Eevee.Reminder.rar"><img src="https://img.shields.io/badge/⬇%20Download-Eevee%20Reminder-B08D57?style=for-the-badge&labelColor=6F4E37" alt="Download Eevee Reminder"></a></p>
-
-
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-ready-4CAF50" alt="Status: Ready">
