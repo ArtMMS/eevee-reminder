@@ -11,7 +11,6 @@
   <img src="https://img.shields.io/badge/Platform-Windows%2011-0078D4?logo=windows11&logoColor=white" alt="Platform: Windows 11">
 </p>
 
-
 ## About the Project
 
 The goal of this project is to develop a simple Windows application that helps users remember to take their medications at the correct times.
@@ -42,3 +41,12 @@ This is a personal project intended for learning and personal use.
 * **pystray** – System tray integration, allowing the application to run in the background and provide quick access through a tray icon.
 * **pillow** - Image processing and manipulation library used for loading, displaying, and managing application assets and tray icons.
 * **pyinstaller** – Generation of a standalone `.exe` file.
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshot1.png" width="45%" alt="Screenshot 1">
+  <img src="assets/screenshot2.png" width="45%" alt="Screenshot 2">
+</p>
